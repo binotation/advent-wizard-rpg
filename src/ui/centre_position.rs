@@ -12,7 +12,7 @@ use ratatui::{
 #[derive(Default)]
 pub struct CenterPosition<'a> {
     block: Option<Block<'a>>,
-    text: &'a str,
+    text: String,
 }
 
 impl<'a> Widget for CenterPosition<'a> {
@@ -45,7 +45,7 @@ impl<'a> CenterPosition<'a> {
         self
     }
 
-    pub fn text(mut self, text: &'a str) -> CenterPosition<'a> {
+    pub fn text(mut self, text: String) -> CenterPosition<'a> {
         self.text = text;
         self
     }

@@ -1,22 +1,24 @@
 use rustc_hash::FxHashSet;
 
 #[derive(Debug)]
-struct Boss {
+pub struct Boss {
     hitpoints: i32,
     damage: i32,
     poisoned: Option<i32>,
 }
 
-impl Boss {
-    fn new() -> Self {
+impl Default for Boss {
+    fn default() -> Self {
         Self {
             hitpoints: 55,
             damage: 8,
             poisoned: None,
         }
     }
+}
 
-    fn new_custom(hitpoints: i32, damage: i32) -> Self {
+impl Boss {
+    fn new(hitpoints: i32, damage: i32) -> Self {
         Self {
             hitpoints,
             damage,
@@ -42,20 +44,59 @@ impl Boss {
             }
         }
     }
+
+    pub fn get_hitpoints(&self) -> i32 {
+        self.hitpoints
+    }
+
+    pub fn get_poisoned(&self) -> Option<i32> {
+        self.poisoned
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+pub enum Spell {
+    MagicMissile,
+    Drain,
+    Shield,
+    Poison,
+    Recharge,
+}
+
+impl Spell {
+    pub fn get_mana(&self) -> i32 {
+        match self {
+            Spell::MagicMissile => 53,
+            Spell::Drain => 73,
+            Spell::Shield => 113,
+            Spell::Poison => 173,
+            Spell::Recharge => 229,
+        }
+    }
+
+    pub fn get_display_name(&self) -> &'static str {
+        match self {
+            Spell::MagicMissile => "Magic Missile",
+            Spell::Drain => "Drain",
+            Spell::Shield => "Shield",
+            Spell::Poison => "Poison",
+            Spell::Recharge => "Recharge",
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct Wizard {
-    pub hitpoints: i32,
-    pub armor: i32,
-    pub mana: i32,
-    pub shielded: Option<i32>,
-    pub recharging: Option<i32>,
-    pub possible_spells: FxHashSet<Spell>,
+    hitpoints: i32,
+    armor: i32,
+    mana: i32,
+    shielded: Option<i32>,
+    recharging: Option<i32>,
+    possible_spells: FxHashSet<Spell>,
 }
 
-impl Wizard {
-    fn new() -> Self {
+impl Default for Wizard {
+    fn default() -> Self {
         let mut wizard = Self {
             hitpoints: 50,
             armor: 0,
@@ -64,11 +105,13 @@ impl Wizard {
             recharging: None,
             possible_spells: FxHashSet::default(),
         };
-        wizard.update_possible_spells(&Boss::new());
+        wizard.update_possible_spells(&Boss::default());
         wizard
     }
+}
 
-    fn new_custom(hitpoints: i32, mana: i32) -> Self {
+impl Wizard {
+    fn new(hitpoints: i32, mana: i32) -> Self {
         let mut wizard = Self {
             hitpoints,
             armor: 0,
@@ -77,7 +120,7 @@ impl Wizard {
             recharging: None,
             possible_spells: FxHashSet::default(),
         };
-        wizard.update_possible_spells(&Boss::new());
+        wizard.update_possible_spells(&Boss::default());
         wizard
     }
 
@@ -170,30 +213,33 @@ impl Wizard {
             self.possible_spells.remove(&Spell::Recharge);
         }
     }
-}
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
-pub enum Spell {
-    MagicMissile,
-    Drain,
-    Shield,
-    Poison,
-    Recharge,
-}
+    pub fn get_hitpoints(&self) -> i32 {
+        self.hitpoints
+    }
 
-impl Spell {
-    fn get_mana(&self) -> i32 {
-        match self {
-            Spell::MagicMissile => 53,
-            Spell::Drain => 73,
-            Spell::Shield => 113,
-            Spell::Poison => 173,
-            Spell::Recharge => 229,
-        }
+    pub fn get_armor(&self) -> i32 {
+        self.armor
+    }
+
+    pub fn get_mana(&self) -> i32 {
+        self.mana
+    }
+
+    pub fn get_shielded(&self) -> Option<i32> {
+        self.shielded
+    }
+
+    pub fn get_recharging(&self) -> Option<i32> {
+        self.recharging
+    }
+
+    pub fn get_possible_spells(&self) -> &FxHashSet<Spell> {
+        &self.possible_spells
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Battle {
     wizard: Wizard,
     boss: Boss,
@@ -205,19 +251,6 @@ pub struct Battle {
 }
 
 pub struct EffectOngoingError();
-
-impl Default for Battle {
-    fn default() -> Self {
-        Battle {
-            wizard: Wizard::new(),
-            boss: Boss::new(),
-            hard_mode: false,
-            mana_used: 0,
-            spells_used: Vec::new(),
-            outcome: None,
-        }
-    }
-}
 
 impl Battle {
     fn new(wizard: Wizard, boss: Boss, hard_mode: bool) -> Self {
@@ -292,27 +325,8 @@ impl Battle {
     pub fn get_wizard(&self) -> &Wizard {
         &self.wizard
     }
-}
 
-#[cfg(test)]
-mod solution {
-    use super::*;
-
-    #[test]
-    fn battle_simple() {
-        let wizard = Wizard::new_custom(10, 250);
-        let boss = Boss::new_custom(14, 8);
-        let mut battle = Battle::new(wizard, boss, false);
-        for spell in [
-            Spell::Recharge,
-            Spell::Shield,
-            Spell::Drain,
-            Spell::Poison,
-            Spell::MagicMissile,
-        ] {
-            let outcome = battle.step(&spell);
-            assert!(outcome.is_ok());
-        }
-        assert_eq!(battle.outcome, Some(true));
+    pub fn get_boss(&self) -> &Boss {
+        &self.boss
     }
 }

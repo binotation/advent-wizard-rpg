@@ -1,2 +1,2 @@
-mod game;
-pub use game::*;
+mod rpg;
+pub use rpg::*;
