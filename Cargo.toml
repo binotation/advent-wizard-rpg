@@ -1,0 +1,8 @@
+[package]
+name = "advent-wizard-rpg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.28.1"
+rustc-hash = "2.0.0"
