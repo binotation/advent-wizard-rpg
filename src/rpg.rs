@@ -49,6 +49,10 @@ impl Boss {
         self.hitpoints
     }
 
+    pub fn get_damage(&self) -> i32 {
+        self.damage
+    }
+
     pub fn get_poisoned(&self) -> Option<i32> {
         self.poisoned
     }
@@ -328,5 +332,21 @@ impl Battle {
 
     pub fn get_boss(&self) -> &Boss {
         &self.boss
+    }
+
+    pub fn get_hard_mode(&self) -> bool {
+        self.hard_mode
+    }
+
+    pub fn get_mana_used(&self) -> i32 {
+        self.mana_used
+    }
+
+    pub fn get_spells_used(&self) -> &Vec<Spell> {
+        &self.spells_used
+    }
+
+    pub fn get_outcome(&self) -> Option<bool> {
+        self.outcome
     }
 }

@@ -8,7 +8,7 @@ use ratatui::{
     style::{Color, Style, Stylize},
     symbols::scrollbar,
     text::Line,
-    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
+    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     Frame,
 };
 use std::{
@@ -129,15 +129,16 @@ impl<'a> App<'a> {
 
         // Layout for 3 game screens
         let game_windows = Layout::horizontal([
-            Constraint::Percentage(20),
-            Constraint::Percentage(60),
-            Constraint::Percentage(20),
+            Constraint::Percentage(25),
+            Constraint::Percentage(50),
+            Constraint::Percentage(25),
         ])
         .split(chunks[1]);
 
         // Middle game screen: scrollable text displaying game events
         let event_window = Paragraph::new(self.event_window_text.clone())
             .gray()
+            .wrap(Wrap::default())
             .block(
                 Block::bordered()
                     .gray()
@@ -165,37 +166,29 @@ impl<'a> App<'a> {
         );
 
         // Left game screen: text displaying Wizard information
-        let wizard_info = Paragraph::new(format!(
-            "Hitpoints: {}
-Mana: {}",
-            self.game.get_wizard().get_hitpoints(),
-            self.game.get_wizard().get_mana(),
-        ))
-        .gray()
-        .alignment(Alignment::Center)
-        .block(
-            Block::bordered()
-                .light_blue()
-                .title("Wizard".bold().gray())
-                .title_alignment(Alignment::Center),
-        );
+        let wizard_info = Paragraph::new(self.display_wizard_info())
+            .gray()
+            .alignment(Alignment::Left)
+            .wrap(Wrap::default())
+            .block(
+                Block::bordered()
+                    .light_blue()
+                    .title("Wizard".bold().gray())
+                    .title_alignment(Alignment::Center),
+            );
         frame.render_widget(wizard_info, game_windows[0]);
 
         // Right game screen: text displaying Boss information
-        let boss_info = Paragraph::new(format!(
-            "Hitpoints: {}
-Mana: {}",
-            self.game.get_wizard().get_hitpoints(),
-            self.game.get_wizard().get_mana(),
-        ))
-        .gray()
-        .alignment(Alignment::Center)
-        .block(
-            Block::bordered()
-                .light_red()
-                .title("Boss".bold().gray())
-                .title_alignment(Alignment::Center),
-        );
+        let boss_info = Paragraph::new(self.display_boss_info())
+            .gray()
+            .alignment(Alignment::Left)
+            .wrap(Wrap::default())
+            .block(
+                Block::bordered()
+                    .light_red()
+                    .title("Boss".bold().gray())
+                    .title_alignment(Alignment::Center),
+            );
         frame.render_widget(boss_info, game_windows[2]);
 
         // Spell selection table
@@ -269,6 +262,70 @@ Mana: {}",
             self.output_win_loss_event(won)
         } else {
             self.output_event("The enemy has attacked you for 8 hitpoints".to_string());
+        }
+    }
+
+    fn display_wizard_info(&self) -> String {
+        let wizard = self.game.get_wizard();
+        format!(
+            "Hitpoints: {}\n
+Armor: {}\n
+Mana: {}\n
+Total Mana Used: {}\n
+Effects: {}\n
+Spells Used: {}",
+            wizard.get_hitpoints(),
+            wizard.get_armor(),
+            wizard.get_mana(),
+            self.game.get_mana_used(),
+            self.display_wizard_effects(),
+            self.display_wizard_spells_used()
+        )
+    }
+
+    fn display_wizard_effects(&self) -> String {
+        let mut effects = String::new();
+        let wizard = self.game.get_wizard();
+        if let Some(timer) = wizard.get_shielded() {
+            effects.push_str(&format!("\n- Shielded: {} turns left", timer));
+        }
+        if let Some(timer) = wizard.get_recharging() {
+            effects.push_str(&format!("\n- Recharging: {} turns left", timer));
+        }
+        effects
+    }
+
+    fn display_wizard_spells_used(&self) -> String {
+        let mut spells_used = String::new();
+        for (i, spell) in self.game.get_spells_used().iter().enumerate() {
+            spells_used.push_str(&format!(
+                "\n{}. {} ({} mana)",
+                i + 1,
+                spell.get_display_name(),
+                spell.get_mana()
+            ));
+        }
+        spells_used
+    }
+
+    fn display_boss_info(&self) -> String {
+        let boss = self.game.get_boss();
+        format!(
+            "Hitpoints: {}\n
+Armor: (ignored)\n
+Damage: {}\n
+Effects: {}",
+            boss.get_hitpoints(),
+            boss.get_damage(),
+            self.display_boss_effects()
+        )
+    }
+
+    fn display_boss_effects(&self) -> String {
+        if let Some(timer) = self.game.get_boss().get_poisoned() {
+            format!("\n- Poisoned: {} turns left", timer)
+        } else {
+            String::with_capacity(0)
         }
     }
 
