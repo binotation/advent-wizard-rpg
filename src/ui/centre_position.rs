@@ -13,6 +13,7 @@ use ratatui::{
 pub struct CenterPosition<'a> {
     block: Option<Block<'a>>,
     text: String,
+    unavailable: bool,
 }
 
 impl<'a> Widget for CenterPosition<'a> {
@@ -30,11 +31,17 @@ impl<'a> Widget for CenterPosition<'a> {
             return;
         }
 
+        let style = if self.unavailable {
+            Style::default().bold().crossed_out().red()
+        } else {
+            Style::default().bold()
+        };
+
         buf.set_string(
             area.left() + area.width / 2 - self.text.len() as u16 / 2,
             area.top() + area.height / 2,
             self.text,
-            Style::default().bold(),
+            style,
         );
     }
 }
@@ -47,6 +54,11 @@ impl<'a> CenterPosition<'a> {
 
     pub fn text(mut self, text: String) -> CenterPosition<'a> {
         self.text = text;
+        self
+    }
+
+    pub fn unavailable(mut self) -> CenterPosition<'a> {
+        self.unavailable = true;
         self
     }
 }

@@ -18,6 +18,7 @@ impl Default for Boss {
 }
 
 impl Boss {
+    #[allow(dead_code)]
     fn new(hitpoints: i32, damage: i32) -> Self {
         Self {
             hitpoints,
@@ -115,6 +116,7 @@ impl Default for Wizard {
 }
 
 impl Wizard {
+    #[allow(dead_code)]
     fn new(hitpoints: i32, mana: i32) -> Self {
         let mut wizard = Self {
             hitpoints,
@@ -257,6 +259,7 @@ pub struct Battle {
 pub struct EffectOngoingError();
 
 impl Battle {
+    #[allow(dead_code)]
     fn new(wizard: Wizard, boss: Boss, hard_mode: bool) -> Self {
         Self {
             wizard,

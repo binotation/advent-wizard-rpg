@@ -196,25 +196,62 @@ impl<'a> App<'a> {
         let spell_row2 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[3]);
 
         frame.render_widget(
-            Self::create_spell_select_button(Spell::MagicMissile, self.spell_selected == 0),
+            Self::create_spell_select_button(
+                Spell::MagicMissile,
+                self.spell_selected == 0,
+                !self
+                    .game
+                    .get_wizard()
+                    .get_possible_spells()
+                    .contains(&Spell::MagicMissile),
+            ),
             spell_row1[0],
         );
         frame.render_widget(
-            Self::create_spell_select_button(Spell::Drain, self.spell_selected == 1),
+            Self::create_spell_select_button(
+                Spell::Drain,
+                self.spell_selected == 1,
+                !self
+                    .game
+                    .get_wizard()
+                    .get_possible_spells()
+                    .contains(&Spell::Drain),
+            ),
             spell_row1[1],
         );
         frame.render_widget(
-            Self::create_spell_select_button(Spell::Poison, self.spell_selected == 2),
+            Self::create_spell_select_button(
+                Spell::Poison,
+                self.spell_selected == 2,
+                !self
+                    .game
+                    .get_wizard()
+                    .get_possible_spells()
+                    .contains(&Spell::Poison),
+            ),
             spell_row2[0],
         );
         frame.render_widget(
-            Self::create_spell_select_button(Spell::Shield, self.spell_selected == 3),
+            Self::create_spell_select_button(
+                Spell::Shield,
+                self.spell_selected == 3,
+                !self
+                    .game
+                    .get_wizard()
+                    .get_possible_spells()
+                    .contains(&Spell::Shield),
+            ),
             spell_row2[1],
         );
         frame.render_widget(
             Self::create_spell_select_button(
                 Spell::Recharge,
                 self.spell_selected == 4 || self.spell_selected == 5,
+                !self
+                    .game
+                    .get_wizard()
+                    .get_possible_spells()
+                    .contains(&Spell::Recharge),
             ),
             chunks[4],
         );
@@ -420,7 +457,7 @@ impl<'a> App<'a> {
         // Loses hitpoints to attack
         let wizard_hitpoint_diff = wizard_hitpoint_new - wizard_hitpoint_old;
         if wizard_hitpoint_diff.abs() != self.game.get_boss().get_damage() {
-            // Wizard has lost less hitpoints that boss' damage
+            // Wizard has lost less hitpoints than boss' damage
             self.output_event(format!(
                 "Wizard resists attack ({} -> {})",
                 wizard_hitpoint_old, wizard_hitpoint_new
@@ -449,6 +486,17 @@ impl<'a> App<'a> {
             _ => unreachable!(),
         };
 
+        // If selected spell is unavailable
+        if !self
+            .game
+            .get_wizard()
+            .get_possible_spells()
+            .contains(&spell_cast)
+        {
+            return;
+        }
+
+        // If game is over
         if let Some(_outcome) = self.game.get_outcome() {
             return;
         }
@@ -523,19 +571,29 @@ Effects: {}",
         }
     }
 
-    fn create_spell_select_button<'b>(spell: Spell, is_selected: bool) -> CenterPosition<'b> {
+    fn create_spell_select_button<'b>(
+        spell: Spell,
+        is_selected: bool,
+        is_unavailable: bool,
+    ) -> CenterPosition<'b> {
         let color = if is_selected {
             Color::Magenta
         } else {
             Color::Gray
         };
-        CenterPosition::default()
+
+        let center_pos = CenterPosition::default()
             .text(format!(
                 "{}: {} Mana",
                 spell.get_display_name(),
                 spell.get_mana()
             ))
-            .block(Block::bordered().border_style(Style::default().fg(color)))
+            .block(Block::bordered().border_style(Style::default().fg(color)));
+        if is_unavailable {
+            center_pos.unavailable()
+        } else {
+            center_pos
+        }
     }
 }
 
