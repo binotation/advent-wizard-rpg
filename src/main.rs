@@ -229,9 +229,213 @@ impl<'a> App<'a> {
 
     fn output_win_loss_event(&mut self, won: bool) {
         if won {
-            self.output_event("Glory! Your magic has defeated the enemy!".to_string());
+            self.output_event("Glory! Magic has defeated the enemy!".to_string());
         } else {
-            self.output_event("Grief... You have fallen to the enemy...".to_string());
+            self.output_event("Grief... Evil has consumed the wizard...".to_string());
+        }
+    }
+
+    fn wizard_turn_apply_effects(&mut self) {
+        if let Some(_outcome) = self.game.get_outcome() {
+            return;
+        }
+
+        let wizard_hitpoint_old = self.game.get_wizard().get_hitpoints();
+        let wizard_armor_old = self.game.get_wizard().get_armor();
+        let wizard_mana_old = self.game.get_wizard().get_mana();
+        let boss_hitpoint_old = self.game.get_boss().get_hitpoints();
+
+        // Output empty line unless first turn
+        if !self.game.get_spells_used().is_empty() {
+            self.output_event(String::with_capacity(0));
+        }
+        self.output_event("Wizard's turn:".to_string());
+        let outcome = self.game.wizard_turn_apply_effects();
+
+        let wizard_hitpoint_new = self.game.get_wizard().get_hitpoints();
+        let wizard_armor_new = self.game.get_wizard().get_armor();
+        let wizard_mana_new = self.game.get_wizard().get_mana();
+        let boss_hitpoint_new = self.game.get_boss().get_hitpoints();
+
+        // Can lose hitpoints on hard mode
+        let wizard_hitpoint_diff = wizard_hitpoint_new - wizard_hitpoint_old;
+        if wizard_hitpoint_diff < 0 {
+            self.output_event(format!(
+                "Wizard's power fades, {} damage taken (hitpoints: {} -> {})",
+                wizard_hitpoint_diff.abs(),
+                wizard_hitpoint_old,
+                wizard_hitpoint_new
+            ));
+        }
+
+        // Can lose armor if shield ends
+        let wizard_armor_diff = wizard_armor_new - wizard_armor_old;
+        if wizard_armor_diff < 0 {
+            self.output_event(format!(
+                "Wizard's shield fades {} armor ({} -> {})",
+                wizard_armor_diff, wizard_armor_old, wizard_armor_new
+            ))
+        }
+
+        // Can gain mana from recharge
+        let wizard_mana_diff = wizard_mana_new - wizard_mana_old;
+        if wizard_mana_diff > 0 {
+            self.output_event(format!(
+                "Wizard recharges {} mana ({} -> {})",
+                wizard_mana_diff, wizard_mana_old, wizard_mana_new
+            ))
+        }
+
+        // Can lose hitpoints to poison
+        let boss_hitpoint_diff = boss_hitpoint_new - boss_hitpoint_old;
+        if boss_hitpoint_diff < 0 {
+            self.output_event(format!(
+                "Boss poisoned for {} damage ({} -> {})",
+                boss_hitpoint_diff.abs(),
+                boss_hitpoint_old,
+                boss_hitpoint_new
+            ))
+        }
+
+        if let Some(won) = outcome {
+            self.output_win_loss_event(won);
+        }
+    }
+
+    fn wizard_turn_cast_spell(&mut self, spell: &Spell) {
+        if let Some(_outcome) = self.game.get_outcome() {
+            return;
+        }
+
+        let wizard_hitpoint_old = self.game.get_wizard().get_hitpoints();
+        let wizard_armor_old = self.game.get_wizard().get_armor();
+        let wizard_mana_old = self.game.get_wizard().get_mana();
+        let boss_hitpoint_old = self.game.get_boss().get_hitpoints();
+
+        self.output_event(format!("Wizard casts {}", spell.get_display_name()));
+        let outcome = self.game.wizard_turn_cast_spell(spell);
+
+        let wizard_hitpoint_new = self.game.get_wizard().get_hitpoints();
+        let wizard_armor_new = self.game.get_wizard().get_armor();
+        let wizard_mana_new = self.game.get_wizard().get_mana();
+        let boss_hitpoint_new = self.game.get_boss().get_hitpoints();
+
+        // Can gain hitpoints from Drain
+        let wizard_hitpoint_diff = wizard_hitpoint_new - wizard_hitpoint_old;
+        if wizard_hitpoint_diff > 0 {
+            self.output_event(format!(
+                "Wizard regenerates {} hitpoints ({} -> {})",
+                wizard_hitpoint_diff, wizard_hitpoint_old, wizard_hitpoint_new
+            ));
+        }
+
+        // Can gain armor from shield
+        let wizard_armor_diff = wizard_armor_new - wizard_armor_old;
+        if wizard_armor_diff > 0 {
+            self.output_event(format!(
+                "Wizard shields for +{} armor ({} -> {})",
+                wizard_armor_diff, wizard_armor_old, wizard_armor_new
+            ));
+        }
+
+        // Loses mana from spell cast
+        let wizard_mana_diff = wizard_mana_new - wizard_mana_old;
+        if wizard_mana_diff < 0 {
+            self.output_event(format!(
+                "Wizard uses {} mana ({} -> {})",
+                wizard_mana_diff.abs(),
+                wizard_mana_old,
+                wizard_mana_new
+            ));
+        }
+
+        // Can lose hitpoints to poison
+        let boss_hitpoint_diff = boss_hitpoint_new - boss_hitpoint_old;
+        if boss_hitpoint_diff < 0 {
+            self.output_event(format!(
+                "Boss receives {} damage ({} -> {})",
+                boss_hitpoint_diff.abs(),
+                boss_hitpoint_old,
+                boss_hitpoint_new
+            ));
+        }
+
+        if let Err(_err) = outcome {
+            self.output_event("You cannot cast that spell!".to_string());
+        } else if let Ok(Some(won)) = outcome {
+            self.output_win_loss_event(won);
+        }
+    }
+
+    fn boss_turn_apply_effects(&mut self) {
+        if let Some(_outcome) = self.game.get_outcome() {
+            return;
+        }
+        let wizard_mana_old = self.game.get_wizard().get_mana();
+        let boss_hitpoint_old = self.game.get_boss().get_hitpoints();
+
+        self.output_event(String::with_capacity(0));
+        self.output_event("Boss' turn:".to_string());
+        let outcome = self.game.boss_turn_apply_effects();
+
+        let wizard_mana_new = self.game.get_wizard().get_mana();
+        let boss_hitpoint_new = self.game.get_boss().get_hitpoints();
+
+        // Can gain mana from recharge
+        let wizard_mana_diff = wizard_mana_new - wizard_mana_old;
+        if wizard_mana_diff > 0 {
+            self.output_event(format!(
+                "Wizard recharges {} mana ({} -> {})",
+                wizard_mana_diff, wizard_mana_old, wizard_mana_new
+            ))
+        }
+
+        // Can lose hitpoints to poison
+        let boss_hitpoint_diff = boss_hitpoint_new - boss_hitpoint_old;
+        if boss_hitpoint_diff < 0 {
+            self.output_event(format!(
+                "Boss poisoned for {} damage ({} -> {})",
+                boss_hitpoint_diff.abs(),
+                boss_hitpoint_old,
+                boss_hitpoint_new
+            ))
+        }
+
+        if let Some(won) = outcome {
+            self.output_win_loss_event(won)
+        }
+    }
+
+    fn boss_turn_attack(&mut self) {
+        if let Some(_outcome) = self.game.get_outcome() {
+            return;
+        }
+        let wizard_hitpoint_old = self.game.get_wizard().get_hitpoints();
+
+        self.output_event("Boss attacks".to_string());
+        let outcome = self.game.boss_turn_attack();
+
+        let wizard_hitpoint_new = self.game.get_wizard().get_hitpoints();
+
+        // Loses hitpoints to attack
+        let wizard_hitpoint_diff = wizard_hitpoint_new - wizard_hitpoint_old;
+        if wizard_hitpoint_diff.abs() != self.game.get_boss().get_damage() {
+            // Wizard has lost less hitpoints that boss' damage
+            self.output_event(format!(
+                "Wizard resists attack ({} -> {})",
+                wizard_hitpoint_old, wizard_hitpoint_new
+            ));
+        } else if wizard_hitpoint_diff.abs() == self.game.get_boss().get_damage() {
+            self.output_event(format!(
+                "Wizard receives {} damage ({} -> {})",
+                wizard_hitpoint_diff.abs(),
+                wizard_hitpoint_old,
+                wizard_hitpoint_new
+            ));
+        }
+
+        if let Some(won) = outcome {
+            self.output_win_loss_event(won)
         }
     }
 
@@ -245,24 +449,14 @@ impl<'a> App<'a> {
             _ => unreachable!(),
         };
 
-        let outcome = self.game.wizard_turn(&spell_cast);
-        if let Err(_err) = outcome {
-            self.output_event("You cannot cast that spell!".to_string());
+        if let Some(_outcome) = self.game.get_outcome() {
             return;
-        } else if let Ok(outcome) = outcome {
-            if let Some(won) = outcome {
-                self.output_win_loss_event(won);
-            } else {
-                self.output_event(format!("You cast {:#?}", spell_cast));
-            }
         }
 
-        let outcome = self.game.boss_turn();
-        if let Some(won) = outcome {
-            self.output_win_loss_event(won)
-        } else {
-            self.output_event("The enemy has attacked you for 8 hitpoints".to_string());
-        }
+        self.wizard_turn_cast_spell(&spell_cast);
+        self.boss_turn_apply_effects();
+        self.boss_turn_attack();
+        self.wizard_turn_apply_effects();
     }
 
     fn display_wizard_info(&self) -> String {
@@ -299,7 +493,7 @@ Spells Used: {}",
         let mut spells_used = String::new();
         for (i, spell) in self.game.get_spells_used().iter().enumerate() {
             spells_used.push_str(&format!(
-                "\n{}. {} ({} mana)",
+                "\n{}. {} (-{} mana)",
                 i + 1,
                 spell.get_display_name(),
                 spell.get_mana()

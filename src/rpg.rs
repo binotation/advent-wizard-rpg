@@ -270,22 +270,35 @@ impl Battle {
 
     /// Returns Some(true) if the wizard won, Some(false) if the boss won or None
     /// if neither has won.
-    pub fn wizard_turn(&mut self, spell: &Spell) -> Result<Option<bool>, EffectOngoingError> {
-        // Check chosen spell is possible
-        if !self.wizard.possible_spells.contains(spell) {
-            return Err(EffectOngoingError());
-        }
-
-        // Wizard's turn
+    pub fn wizard_turn_apply_effects(&mut self) -> Option<bool> {
         if self.hard_mode {
             self.wizard.hitpoints -= 1;
+            // Check wizard lost
             if self.wizard.hitpoints <= 0 {
                 self.outcome = Some(false);
-                return Ok(Some(false));
+                return Some(false);
             }
         }
         self.wizard.apply_effect();
         self.boss.apply_effect();
+        // Check boss lost
+        if self.boss.hitpoints <= 0 {
+            self.outcome = Some(true);
+            return Some(true);
+        }
+        None
+    }
+
+    /// Returns Some(true) if the wizard won, Some(false) if the boss won or None
+    /// if neither has won.
+    pub fn wizard_turn_cast_spell(
+        &mut self,
+        spell: &Spell,
+    ) -> Result<Option<bool>, EffectOngoingError> {
+        // Check chosen spell is possible
+        if !self.wizard.possible_spells.contains(spell) {
+            return Err(EffectOngoingError());
+        }
 
         match spell {
             Spell::MagicMissile => self.wizard.magic_missile(&mut self.boss),
@@ -297,6 +310,7 @@ impl Battle {
         self.mana_used += spell.get_mana();
         self.spells_used.push(spell.clone());
 
+        // Check boss lost
         if self.boss.hitpoints <= 0 {
             self.outcome = Some(true);
             return Ok(Some(true));
@@ -306,23 +320,26 @@ impl Battle {
 
     /// Returns Some(true) if the wizard won, Some(false) if the boss won or None
     /// if neither has won.
-    pub fn boss_turn(&mut self) -> Option<bool> {
-        // Boss' turn
+    pub fn boss_turn_apply_effects(&mut self) -> Option<bool> {
         self.wizard.apply_effect();
         self.boss.apply_effect();
+        // Check boss lost
         if self.boss.hitpoints <= 0 {
             self.outcome = Some(true);
             return Some(true);
         }
+        None
+    }
 
+    pub fn boss_turn_attack(&mut self) -> Option<bool> {
         self.boss.attack(&mut self.wizard);
+        // Check wizard lost
         if self.wizard.hitpoints <= 0 {
             self.outcome = Some(false);
             return Some(false);
         }
 
         self.wizard.update_possible_spells(&self.boss);
-
         None
     }
 
