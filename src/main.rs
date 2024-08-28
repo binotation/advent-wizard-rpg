@@ -25,8 +25,14 @@ struct App<'a> {
     spell_selected: usize,
     event_window_scroll_state: ScrollbarState,
     event_window_scroll: usize,
+    /// Track event window height so when event text is larger than this, scroll down
     event_window_height: u16,
+    /// Event window text
     event_window_text: Vec<Line<'a>>,
+    /// Which line should be animated next
+    event_window_text_index: Option<usize>,
+    /// Which char of the line should be animated next
+    event_window_text_char_index: usize,
 }
 
 impl<'a> App<'a> {
@@ -39,12 +45,14 @@ impl<'a> App<'a> {
             event_window_scroll: usize::default(),
             event_window_height: 2, // 2 lines are printed initially on hard mode
             event_window_text: Vec::default(),
+            event_window_text_index: None,
+            event_window_text_char_index: 0,
         }
     }
 
     /// runs the application's main loop until the user quits
     fn run(&mut self, terminal: &mut tui::Tui) -> io::Result<()> {
-        let tick_rate = Duration::from_millis(250);
+        let tick_rate = Duration::from_millis(50);
         let mut last_tick = Instant::now();
 
         self.wizard_turn_apply_effects();
@@ -150,8 +158,57 @@ impl<'a> App<'a> {
         ])
         .split(chunks[1]);
 
+        // Crudely animate text
+        let mut should_scroll_down = false;
+        let event_window_text =
+            if !self.event_window_text.is_empty() && self.event_window_text_index.is_none() {
+                // Special case: when first line is outputted, set animation line index
+                self.event_window_text_index = Some(0);
+                Vec::default()
+            } else if let Some(line_index) = self.event_window_text_index.as_mut() {
+                // Usual case
+                if *line_index >= self.event_window_text.len() {
+                    // No new line
+                    self.event_window_text.clone()
+                } else {
+                    // There are new lines
+                    let mut existing_lines = self.event_window_text[0..*line_index].to_owned();
+                    let current_line = self.event_window_text[*line_index].to_string();
+                    if self.event_window_text_char_index < current_line.len() {
+                        // Output line 2 chars at a time (not safe for utf8)
+                        self.event_window_text_char_index =
+                            if self.event_window_text_char_index + 2 > current_line.len() {
+                                self.event_window_text_char_index + 1
+                            } else {
+                                self.event_window_text_char_index + 2
+                            };
+                        existing_lines.push(Line::from(
+                            current_line[0..self.event_window_text_char_index].to_string(),
+                        ));
+                        existing_lines
+                    } else {
+                        // Max char index reached, output whole line
+                        should_scroll_down = true;
+                        *line_index += 1; // Update to next line
+                        self.event_window_text_char_index = 0; // Wrap char index to 0
+                        existing_lines.push(Line::from(current_line));
+                        existing_lines
+                    }
+                }
+            } else {
+                // Initial case: no lines to output
+                Vec::default()
+            };
+
+        // Automatically scroll down as new line is outputted
+        if let Some(line_index) = self.event_window_text_index {
+            if should_scroll_down && (line_index > (self.event_window_height - 3) as usize) {
+                self.event_window_scroll_down();
+            }
+        }
+
         // Middle game screen: scrollable text displaying game events
-        let event_window = Paragraph::new(self.event_window_text.clone())
+        let event_window = Paragraph::new(event_window_text)
             .gray()
             .wrap(Wrap::default())
             .block(
@@ -237,9 +294,6 @@ impl<'a> App<'a> {
 
     fn output_event(&mut self, line: String) {
         self.event_window_text.push(Line::from(line));
-        if self.event_window_text.len() > self.event_window_height as usize {
-            self.event_window_scroll_down();
-        }
     }
 
     fn output_win_loss_event(&mut self, won: bool) {
@@ -453,6 +507,10 @@ impl<'a> App<'a> {
     }
 
     fn step_game(&mut self) {
+        // Skip currently animating lines
+        let new_event_window_text_index = self.event_window_text.len();
+        self.event_window_text_index = Some(new_event_window_text_index);
+
         let spell_cast = match self.spell_selected {
             0 => Spell::MagicMissile,
             1 => Spell::Drain,
