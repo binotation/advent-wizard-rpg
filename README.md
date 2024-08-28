@@ -6,5 +6,8 @@ This is the wizard RPG game from Advent of Code 2015 Day 22. Since I wrote all t
 ./advent-wizard-rpg [--hard]
 ```
 
+## Controls
+Use `W`, `A`, `S`, `D` and `Enter` to select a spell to cast.
+
 ## Screenshot
 ![](screenshot.png)
