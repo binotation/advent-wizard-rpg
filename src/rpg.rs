@@ -245,7 +245,7 @@ impl Wizard {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Battle {
     wizard: Wizard,
     boss: Boss,
@@ -259,11 +259,10 @@ pub struct Battle {
 pub struct EffectOngoingError();
 
 impl Battle {
-    #[allow(dead_code)]
-    fn new(wizard: Wizard, boss: Boss, hard_mode: bool) -> Self {
+    pub fn new(hard_mode: bool) -> Self {
         Self {
-            wizard,
-            boss,
+            wizard: Wizard::default(),
+            boss: Boss::default(),
             hard_mode,
             mana_used: 0,
             spells_used: Vec::new(),

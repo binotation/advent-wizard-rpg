@@ -1,6 +1,7 @@
 mod ui;
 
 use advent_wizard_rpg::{Battle, Spell};
+use clap::{arg, command};
 use ratatui::{
     crossterm::event::{self, Event, KeyCode},
     layout::Alignment,
@@ -17,7 +18,7 @@ use std::{
 };
 use ui::{tui, CenterPosition};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct App<'a> {
     exit: bool,
     game: Battle,
@@ -29,10 +30,24 @@ struct App<'a> {
 }
 
 impl<'a> App<'a> {
+    fn new(hard_mode: bool) -> Self {
+        Self {
+            exit: false,
+            game: Battle::new(hard_mode),
+            spell_selected: 0,
+            event_window_scroll_state: ScrollbarState::default(),
+            event_window_scroll: usize::default(),
+            event_window_height: 2, // 2 lines are printed initially on hard mode
+            event_window_text: Vec::default(),
+        }
+    }
+
     /// runs the application's main loop until the user quits
     fn run(&mut self, terminal: &mut tui::Tui) -> io::Result<()> {
         let tick_rate = Duration::from_millis(250);
         let mut last_tick = Instant::now();
+
+        self.wizard_turn_apply_effects();
 
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
@@ -196,62 +211,25 @@ impl<'a> App<'a> {
         let spell_row2 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[3]);
 
         frame.render_widget(
-            Self::create_spell_select_button(
-                Spell::MagicMissile,
-                self.spell_selected == 0,
-                !self
-                    .game
-                    .get_wizard()
-                    .get_possible_spells()
-                    .contains(&Spell::MagicMissile),
-            ),
+            self.create_spell_select_button(Spell::MagicMissile, self.spell_selected == 0),
             spell_row1[0],
         );
         frame.render_widget(
-            Self::create_spell_select_button(
-                Spell::Drain,
-                self.spell_selected == 1,
-                !self
-                    .game
-                    .get_wizard()
-                    .get_possible_spells()
-                    .contains(&Spell::Drain),
-            ),
+            self.create_spell_select_button(Spell::Drain, self.spell_selected == 1),
             spell_row1[1],
         );
         frame.render_widget(
-            Self::create_spell_select_button(
-                Spell::Poison,
-                self.spell_selected == 2,
-                !self
-                    .game
-                    .get_wizard()
-                    .get_possible_spells()
-                    .contains(&Spell::Poison),
-            ),
+            self.create_spell_select_button(Spell::Poison, self.spell_selected == 2),
             spell_row2[0],
         );
         frame.render_widget(
-            Self::create_spell_select_button(
-                Spell::Shield,
-                self.spell_selected == 3,
-                !self
-                    .game
-                    .get_wizard()
-                    .get_possible_spells()
-                    .contains(&Spell::Shield),
-            ),
+            self.create_spell_select_button(Spell::Shield, self.spell_selected == 3),
             spell_row2[1],
         );
         frame.render_widget(
-            Self::create_spell_select_button(
+            self.create_spell_select_button(
                 Spell::Recharge,
                 self.spell_selected == 4 || self.spell_selected == 5,
-                !self
-                    .game
-                    .get_wizard()
-                    .get_possible_spells()
-                    .contains(&Spell::Recharge),
             ),
             chunks[4],
         );
@@ -298,10 +276,8 @@ impl<'a> App<'a> {
         let wizard_hitpoint_diff = wizard_hitpoint_new - wizard_hitpoint_old;
         if wizard_hitpoint_diff < 0 {
             self.output_event(format!(
-                "Wizard's power fades, {} damage taken (hitpoints: {} -> {})",
-                wizard_hitpoint_diff.abs(),
-                wizard_hitpoint_old,
-                wizard_hitpoint_new
+                "Wizard's magic fades (hitpoints: {} -> {})",
+                wizard_hitpoint_old, wizard_hitpoint_new
             ));
         }
 
@@ -572,9 +548,9 @@ Effects: {}",
     }
 
     fn create_spell_select_button<'b>(
+        &self,
         spell: Spell,
         is_selected: bool,
-        is_unavailable: bool,
     ) -> CenterPosition<'b> {
         let color = if is_selected {
             Color::Magenta
@@ -589,7 +565,12 @@ Effects: {}",
                 spell.get_mana()
             ))
             .block(Block::bordered().border_style(Style::default().fg(color)));
-        if is_unavailable {
+        if !self
+            .game
+            .get_wizard()
+            .get_possible_spells()
+            .contains(&spell)
+        {
             center_pos.unavailable()
         } else {
             center_pos
@@ -598,8 +579,11 @@ Effects: {}",
 }
 
 fn main() -> io::Result<()> {
+    let matches = command!()
+        .arg(arg!(--hard "Set difficulty to hard"))
+        .get_matches();
     let mut terminal = tui::init()?;
-    let app_result = App::default().run(&mut terminal);
+    let app_result = App::new(matches.get_flag("hard")).run(&mut terminal);
     tui::restore()?;
     app_result
 }
