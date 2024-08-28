@@ -225,7 +225,7 @@ impl<'a> App<'a> {
         self.event_window_height = game_windows[1].height;
         frame.render_widget(event_window, game_windows[1]); // Middle window
         frame.render_stateful_widget(
-            Scrollbar::new(ScrollbarOrientation::VerticalLeft)
+            Scrollbar::new(ScrollbarOrientation::VerticalRight)
                 .symbols(scrollbar::VERTICAL)
                 .begin_symbol(None)
                 .track_symbol(None)
