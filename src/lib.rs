@@ -1,2 +1,2 @@
-pub mod game;
-pub mod ui;
+mod game;
+pub use game::*;

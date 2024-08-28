@@ -45,13 +45,13 @@ impl Boss {
 }
 
 #[derive(Debug)]
-struct Wizard {
-    hitpoints: i32,
-    armor: i32,
-    mana: i32,
-    shielded: Option<i32>,
-    recharging: Option<i32>,
-    possible_spells: FxHashSet<Spell>,
+pub struct Wizard {
+    pub hitpoints: i32,
+    pub armor: i32,
+    pub mana: i32,
+    pub shielded: Option<i32>,
+    pub recharging: Option<i32>,
+    pub possible_spells: FxHashSet<Spell>,
 }
 
 impl Wizard {
@@ -287,6 +287,10 @@ impl Battle {
         self.wizard.update_possible_spells(&self.boss);
 
         None
+    }
+
+    pub fn get_wizard(&self) -> &Wizard {
+        &self.wizard
     }
 }
 

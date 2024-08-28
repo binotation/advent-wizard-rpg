@@ -1,6 +1,6 @@
-use std::io;
-// use crate::tui;
+mod ui;
 
+use advent_wizard_rpg::{Battle, Spell};
 use ratatui::{
     buffer::Buffer,
     crossterm::event::{self, Event, KeyCode},
@@ -16,12 +16,11 @@ use ratatui::{
     },
     Frame,
 };
-use std::time::{Duration, Instant};
-
-use advent_wizard_rpg::{
-    game::{Battle, Spell},
-    ui::{tui, CenterPosition},
+use std::{
+    io,
+    time::{Duration, Instant},
 };
+use ui::{tui, CenterPosition};
 
 impl<'a> App<'a> {
     /// runs the application's main loop until the user quits
@@ -49,20 +48,7 @@ impl<'a> App<'a> {
                         KeyCode::Char('d') => self.select_right(),
                         KeyCode::Char('w') => self.select_up(),
                         KeyCode::Char('s') => self.select_down(),
-                        KeyCode::Enter => {
-                            let spell_cast = match self.spell_selected {
-                                0 => Spell::MagicMissile,
-                                1 => Spell::Drain,
-                                2 => Spell::Poison,
-                                3 => Spell::Shield,
-                                4 | 5 => Spell::Recharge,
-                                _ => unreachable!(),
-                            };
-                            let outcome = self.game.wizard_turn(&spell_cast);
-                            self.game_output
-                                .push(Line::from(format!("You cast {:#?}", spell_cast)));
-                            let outcome = self.game.boss_turn();
-                        }
+                        KeyCode::Enter => self.step_game(),
                         _ => (),
                     }
                 }
@@ -85,9 +71,12 @@ impl<'a> App<'a> {
         ])
         .split(area);
 
+    let row1 = Layout::horizontal([Constraint::Percentage(33), Constraint::Percentage(33), Constraint::Percentage(33)]).split(chunks[1]);
+
         self.vertical_scroll_state = self
             .vertical_scroll_state
             .content_length(self.game_output.len());
+
 
         let create_block = |title: &'static str| Block::bordered().gray().title(title.bold());
 
@@ -100,45 +89,52 @@ impl<'a> App<'a> {
             .gray()
             .block(create_block("Game Screen"))
             .scroll((self.vertical_scroll as u16, 0));
-        frame.render_widget(paragraph, chunks[1]);
+        frame.render_widget(paragraph, row1[1]);
         frame.render_stateful_widget(
             Scrollbar::new(ScrollbarOrientation::VerticalLeft)
                 .symbols(scrollbar::VERTICAL)
                 .begin_symbol(None)
                 .track_symbol(None)
                 .end_symbol(None),
-            chunks[1].inner(Margin {
+            row1[1].inner(Margin {
                 vertical: 1,
                 horizontal: 0,
             }),
             &mut self.vertical_scroll_state,
         );
-        let row1 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[2]);
-        let row2 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[3]);
+
+        let wizard_info = Paragraph::new(format!("Hitpoints: {}
+Mana: {}", self.game.get_wizard().hitpoints, self.game.get_wizard().mana))
+        .gray()
+        .block(create_block("Game Screen"));
+    frame.render_widget(wizard_info, row1[0]);
+
+        let row2 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[2]);
+        let row3 = Layout::horizontal([Constraint::Percentage(50); 2]).split(chunks[3]);
         if self.spell_selected == 0 {}
         frame.render_widget(
             CenterPosition::default()
                 .text("Magic Missile")
                 .block(title_block(self.spell_selected == 0)),
-            row1[0],
+            row2[0],
         );
         frame.render_widget(
             CenterPosition::default()
                 .text("Drain")
                 .block(title_block(self.spell_selected == 1)),
-            row1[1],
+            row2[1],
         );
         frame.render_widget(
             CenterPosition::default()
                 .text("Poison")
                 .block(title_block(self.spell_selected == 2)),
-            row2[0],
+            row3[0],
         );
         frame.render_widget(
             CenterPosition::default()
                 .text("Shield")
                 .block(title_block(self.spell_selected == 3)),
-            row2[1],
+            row3[1],
         );
         frame.render_widget(
             CenterPosition::default()
@@ -174,7 +170,50 @@ impl<'a> App<'a> {
         }
     }
 
-    fn cast_spell(&mut self) {}
+    fn output_screen(&mut self, line: String) {
+        self.game_output.push(Line::from(line));
+        if self.game_output.len() > 6 {
+            self.vertical_scroll += 1;
+        }
+    }
+
+    fn output_win_loss(&mut self, won: bool) {
+        if won {
+            self.output_screen("Glory! Your magic has defeated the enemy!".to_string());
+        } else {
+            self.output_screen("Grief... You have fallen to the enemy...".to_string());
+        }
+    }
+
+    fn step_game(&mut self) {
+        let spell_cast = match self.spell_selected {
+            0 => Spell::MagicMissile,
+            1 => Spell::Drain,
+            2 => Spell::Poison,
+            3 => Spell::Shield,
+            4 | 5 => Spell::Recharge,
+            _ => unreachable!(),
+        };
+
+        let outcome = self.game.wizard_turn(&spell_cast);
+        if let Err(err) = outcome {
+            self.output_screen("You cannot cast that spell!".to_string());
+            return;
+        } else if let Ok(outcome) = outcome {
+            if let Some(won) = outcome {
+                self.output_win_loss(won);
+            } else {
+                self.output_screen(format!("You cast {:#?}", spell_cast));
+            }
+        }
+
+        let outcome = self.game.boss_turn();
+        if let Some(won) = outcome {
+            self.output_win_loss(won)
+        } else {
+            self.output_screen("The enemy has attacked you for 8 hitpoints".to_string());
+        }
+    }
 }
 
 fn title_block(selected: bool) -> Block<'static> {
